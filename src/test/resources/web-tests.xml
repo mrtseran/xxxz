@@ -1,0 +1,745 @@
+<!DOCTYPE project [
+    <!ENTITY config SYSTEM "./config.xmlf">
+    <!ENTITY login SYSTEM "./login.xmlf">
+]>
+<project basedir="." default="run-all-tests">
+    <taskdef resource="webtestTaskdefs.properties" />
+    <!-- for propertyregex: allows to build a message string with parameter replacement: "User {0} successfully created" -->
+    <!-- usage example -->
+    <!--
+        <propertyregex property="updated.byAdmin"
+            input="${user.updated.byAdmin}"
+            regexp="\{0\}"
+            replace="${it_user_signup.fullname}"
+            global="false" />
+        <verifytext description="verify success message" text="${updated.byAdmin}"/>
+     -->
+    <taskdef resource="net/sf/antcontrib/antcontrib.properties" />
+
+    <!-- Use i18n bundle, 2nd one listed is the default -->
+    <property file="../../../target/classes/ApplicationResources_${user.language}.properties"/>
+    <property file="../../../target/classes/ApplicationResources.properties"/>
+    <property file="../../../target/classes/displaytag_${user.language}.properties"/>
+    <property file="../../../target/classes/displaytag.properties"/>
+
+    <!-- runs all targets -->
+    <target name="run-all-tests" 
+        depends="Login,Logout,PasswordHint,Signup,UserTests,StaticPages,WebServices,DWR,FileUpload,CinemaShowsTests,CinemaShowsTests,CinemasTests,FilmGalleriesTests,FilmsTests,FilmCategoriesTests"
+        description="Call and executes all test cases (targets)"/>
+    
+    <!-- runs user-related tests -->
+    <target name="UserTests" depends="EditUser,SearchUser,SaveUser,AddUser,ActiveUsers"
+        description="Call and executes all user test cases (targets)">
+        <echo>Successfully ran all User UI tests!</echo>
+    </target>
+    
+    <!-- Login to the application -->
+    <target name="Login" description="Runs login test and verifies Home's Title">
+        <webtest name="login">
+            &config;
+            <steps>
+                &login;
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Logout of the application -->
+    <target name="Logout" description="Runs logout test and verifies Login's Title">
+        <webtest name="logout">
+            &config;
+            <steps>
+                &login;
+                <invoke description="get Logout Page" url="/logout"/>
+                <verifytitle description="we should see the login title" text=".*${login.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Retrieve Password Hint -->
+    <target name="PasswordHint" description="Gets the user's password hint">
+        <webtest name="passwordHint">
+            &config;
+            <steps>
+                <invoke description="get Login Page" url="/"/>
+                <verifytitle description="we should see the login title" text=".*${login.title}.*" regex="true"/>
+                <invoke description="click password hint link" url="/passwordHint?username=admin"/>
+                <verifytitle description="show login title again" text=".*${login.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+    
+    <target name="StaticPages" description="Ensures that StaticFilter is working">
+        <webtest name="staticPages">
+            &config;
+            <steps>
+                &login;
+                <invoke description="go to static HTML page" url="/scripts/dojo/test.html"/>
+                <verifytitle description="we should see static title" text="Static HTML Page" regex="true"/>
+                <verifytext description="verify message" text="Static content!"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify the edit user screen displays without errors -->
+    <target name="EditUser"  description="Tests selecting the 'Edit Profile' forward">
+        <webtest name="editUser">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit Profile link" url="/userform"/>
+                <verifytitle description="we should see the user profile title" 
+                    text=".*${userProfile.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+    
+    <!-- Verify the user list screen displays without errors -->
+    <target name="SearchUser" description="Tests search for and displaying all users">
+        <webtest name="searchUser">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click View Users link" url="/admin/users"/>
+                <verifytitle description="we should see the user list title" 
+                    text=".*${userList.title}.*" regex="true"/>
+                <setinputfield description="set search term" name="q" value="matt_raible"/>
+                <clickbutton label="${button.search}" description="Click Search"/>
+                <verifyXPath
+                     description="Count the number of users found"
+                     xpath="count(//table[@id='users']/tbody/tr)"
+                     text="1"/>
+            </steps>
+        </webtest>
+    </target>
+    
+    <!-- Edit a user and then save -->
+    <target name="SaveUser" description="Tests editing and saving a user">
+        <webtest name="saveUser">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit Profile link" url="/userform"/>
+                <verifytitle description="we should see the user profile title" 
+                    text=".*${userProfile.title}.*" regex="true"/>
+                <setinputfield description="set address" name="address.address" value="2255 Lane Avenue"/>
+                <setinputfield description="set zipcode" name="address.postalCode" value="59826"/>
+                <clickbutton label="${button.save}" description="Click Save"/>
+                <verifytitle description="display Home if save OK"
+                     text=".*${home.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+    
+    <!-- Add a new user after logging in -->
+    <target name="AddUser" description="Adds a new user profile">
+        <webtest name="addUser">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Add Button" url="/userform?method=Add&amp;from=list"/>
+                <verifytitle description="view the user profile title" text=".*${userProfile.title}.*" regex="true"/>
+                    
+                <setinputfield description="set username" name="username" value="newuser"/>
+<!--                 <setinputfield description="set password" name="password" value="test"/> -->
+<!--                 <setinputfield description="set confirmPassword" name="confirmPassword" value="test"/> -->
+                <setinputfield description="set firstName" name="firstName" value="Test"/>
+                <setinputfield description="set lastName" name="lastName" value="Name"/>
+                <setinputfield description="set city" name="address.city" value="Denver"/>
+                <setinputfield description="select province" name="address.province" value="CO"/>
+                <setselectfield description="select country" name="address.country" value="US"/>
+                <setinputfield description="set postalCode" name="address.postalCode" value="80210"/>
+                <setinputfield description="set email" name="email" value="newuser@raibledesigns.com"/>
+                <setinputfield description="set website" name="website" value="http://raibledesigns.com"/>
+                <setinputfield description="set passwordHint" name="passwordHint" value="test"/>
+                <setselectfield description="select roles" name="userRoles" value="ROLE_USER"/>
+                <clickbutton label="${button.save}" description="Click button 'Save'"/>
+
+                <verifytitle description="view user list screen" text=".*${userList.title}.*" regex="true"/>
+                <verifytext description="verify success message" regex="true"
+                    text='&lt;div class="alert alert-success.*&gt;.*Test Name.*&lt;/div&gt;'/>
+                    
+                <!-- Delete user -->
+                <clickLink description="Click edit user link" label="newuser"/>
+                <prepareDialogResponse description="Confirm delete" dialogType="confirm" response="true"/>
+                <clickbutton label="${button.delete}" description="Click button 'Delete'"/>
+                <verifyNoDialogResponses/>
+                <verifytext description="verify success message" regex="true"
+                    text='&lt;div class="alert alert-success.*&gt;.*Test Name.*&lt;/div&gt;'/>
+                <verifytitle description="display user list" text=".*${userList.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+    
+    <!-- Sign up a new user (no login) -->
+    <target name="Signup" description="Signup a new user">
+        <webtest name="signup">
+            &config;
+            <steps>
+                <invoke description="click signup link" url="/signup"/>
+                <verifytitle description="view signup title" text=".*${signup.title}.*" regex="true"/>
+                
+                <setinputfield description="set username" name="username" value="signup-user"/>
+                <setinputfield description="set password" name="password" value="test"/>
+<!--                 <setinputfield description="set confirmPassword" name="confirmPassword" value="test"/> -->
+                <setinputfield description="set firstName" name="firstName" value="Test"/>
+                <setinputfield description="set lastName" name="lastName" value="Name"/>
+                <setinputfield description="set city" name="address.city" value="Denver"/>
+                <setinputfield description="set state" name="address.province" value="CO"/>
+                <setselectfield description="select country" name="address.country" value="US"/>
+                <setinputfield description="set postalCode" name="address.postalCode" value="80210"/>
+                <setinputfield description="set email" name="email" value="signup-user@raibledesigns.com"/>
+                <setinputfield description="set website" name="website" value="http://raibledesigns.com"/>
+                <setinputfield description="set passwordHint" name="passwordHint" value="test"/>
+                <clickbutton label="${button.register}" description="Click button 'Signup'"/>
+
+                <verifytitle description="view main menu" text=".*${home.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${user.registered}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- View Active Users -->
+    <target name="ActiveUsers" description="View Active Users List">
+        <webtest name="activeUsers">
+            &config;
+            <steps>
+                &login;
+                <invoke description="get activeUsers URL" url="/admin/activeUsers"/>
+                <verifytitle description="we should see the activeUsers title" 
+                    text=".*${activeUsers.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+    
+    <!-- File Upload -->
+    <target name="FileUpload" description="Tests uploading a file">
+        <webtest name="fileUpload">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Upload a File link" url="/fileupload"/>
+                <verifytitle description="we should see file upload form" text=".*${upload.title}.*" regex="true"/>
+                <setinputfield description="set name" name="name" value="Canoo Test File"/>
+                <setFileField description="set file" name="file" fileName="web-tests.xml"/>
+                <clickbutton label="${button.upload}" description="Click Upload"/>
+                <verifytitle description="show file data if upload OK" text=".*${display.title}.*" regex="true"/>
+                <verifytext description="verify original filename displayed on page" text="web-tests.xml"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify CXF is configured properly. -->
+    <target name="WebServices" description="Verifies CXF Services are listed">
+        <webtest name="webservices">
+            &config;
+            <steps>
+                &login;
+                <invoke url="/services/"/>
+                <verifytitle description="should see services listing" text="CXF - Service list.*" regex="true"/>
+                <verifytext description="verify page renders" text="Available SOAP services"/>
+                <verifytext description="verify UserManager exist" text="UserService"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify DWR is configured properly. -->
+    <target name="DWR" description="Verifies DWR Index Page">
+        <webtest name="dwr">
+            &config;
+            <steps>
+                &login;
+                <invoke url="/dwr/"/>
+                <verifytitle description="should DWR Test Index" text="DWR Test Index.*" regex="true"/>
+                <clicklink description="click on UserManager link" label="UserManager"/>
+                <verifytext description="verify next page comes up" text="Methods For: UserManager"/>
+            </steps>
+        </webtest>
+    </target>
+    <!--FilmCategories-START-->
+    <!-- runs filmCategories-related tests -->
+    <target name="FilmCategoriesTests"
+            depends="SearchFilmCategoriess,EditFilmCategories,SaveFilmCategories,AddFilmCategories,DeleteFilmCategories"
+            description="Call and executes all filmCategories test cases (targets)">
+        <echo>Successfully ran all FilmCategories UI tests!</echo>
+    </target>
+
+    <!-- Verify the filmCategoriess list screen displays without errors -->
+    <target name="SearchFilmCategoriess" description="Tests search for and displaying all filmCategoriess">
+        <webtest name="searchFilmCategoriess">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click View FilmCategories link" url="/filmCategoriess"/>
+                <verifytitle description="we should see the filmCategoriesList title"
+                    text=".*${filmCategoriesList.title}.*" regex="true"/>
+                <setinputfield description="set search term" name="q" value="*"/>
+                <clickbutton label="${button.search}" description="Click Search"/>
+                <verifytitle description="we should see the filmCategoriesList title"
+                    text=".*${filmCategoriesList.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify the edit filmCategories screen displays without errors -->
+    <target name="EditFilmCategories" description="Tests editing an existing FilmCategories's information">
+        <webtest name="editFilmCategories">
+            &config;
+            <steps>
+                &login;
+                <invoke description="View FilmCategories List" url="/filmCategoriess"/>
+                <clicklink label="-1" description="Click edit link"/>
+                <verifytitle description="we should see the filmCategoriesDetail title"
+                    text=".*${filmCategoriesDetail.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Edit a filmCategories and then save -->
+    <target name="SaveFilmCategories" description="Tests editing and saving a filmCategories">
+        <webtest name="saveFilmCategories">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit FilmCategories link" url="/filmCategoriesform?id=-1"/>
+                <verifytitle description="we should see the filmCategoriesDetail title"
+                    text=".*${filmCategoriesDetail.title}.*" regex="true"/>
+
+                <!-- update some of the required fields -->
+
+                <clickbutton label="${button.save}" description="Click Save"/>
+                <verifytitle description="Page re-appears if save successful"
+                    text=".*${filmCategoriesDetail.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${filmCategories.updated}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Add a new FilmCategories -->
+    <target name="AddFilmCategories" description="Adds a new FilmCategories">
+        <webtest name="addFilmCategories">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Add Button" url="/filmCategoriesform"/>
+                <verifytitle description="we should see the filmCategoriesDetail title"
+                    text=".*${filmCategoriesDetail.title}.*" regex="true"/>
+
+                <!-- enter required fields -->
+
+                <clickbutton label="${button.save}" description="Click button 'Save'"/>
+                <verifytitle description="FilmCategories List appears if save successful"
+                    text=".*${filmCategoriesList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${filmCategories.added}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Delete existing filmCategories -->
+    <target name="DeleteFilmCategories" description="Deletes existing FilmCategories">
+        <webtest name="deleteFilmCategories">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit FilmCategories link" url="/filmCategoriesform?id=-1"/>
+                <prepareDialogResponse description="Confirm delete" dialogType="confirm" response="true"/>
+                <clickbutton label="${button.delete}" description="Click button 'Delete'"/>
+                <verifyNoDialogResponses/>
+                <verifytitle description="display FilmCategories List" text=".*${filmCategoriesList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${filmCategories.deleted}"/>
+            </steps>
+        </webtest>
+    </target>    <!--FilmCategories-END-->
+    <!--Films-START-->
+    <!-- runs films-related tests -->
+    <target name="FilmsTests"
+            depends="SearchFilmss,EditFilms,SaveFilms,AddFilms,DeleteFilms"
+            description="Call and executes all films test cases (targets)">
+        <echo>Successfully ran all Films UI tests!</echo>
+    </target>
+
+    <!-- Verify the filmss list screen displays without errors -->
+    <target name="SearchFilmss" description="Tests search for and displaying all filmss">
+        <webtest name="searchFilmss">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click View Films link" url="/filmss"/>
+                <verifytitle description="we should see the filmsList title"
+                    text=".*${filmsList.title}.*" regex="true"/>
+                <setinputfield description="set search term" name="q" value="*"/>
+                <clickbutton label="${button.search}" description="Click Search"/>
+                <verifytitle description="we should see the filmsList title"
+                    text=".*${filmsList.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify the edit films screen displays without errors -->
+    <target name="EditFilms" description="Tests editing an existing Films's information">
+        <webtest name="editFilms">
+            &config;
+            <steps>
+                &login;
+                <invoke description="View Films List" url="/filmss"/>
+                <clicklink label="-1" description="Click edit link"/>
+                <verifytitle description="we should see the filmsDetail title"
+                    text=".*${filmsDetail.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Edit a films and then save -->
+    <target name="SaveFilms" description="Tests editing and saving a films">
+        <webtest name="saveFilms">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit Films link" url="/filmsform?id=-1"/>
+                <verifytitle description="we should see the filmsDetail title"
+                    text=".*${filmsDetail.title}.*" regex="true"/>
+
+                <!-- update some of the required fields -->
+
+                <clickbutton label="${button.save}" description="Click Save"/>
+                <verifytitle description="Page re-appears if save successful"
+                    text=".*${filmsDetail.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${films.updated}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Add a new Films -->
+    <target name="AddFilms" description="Adds a new Films">
+        <webtest name="addFilms">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Add Button" url="/filmsform"/>
+                <verifytitle description="we should see the filmsDetail title"
+                    text=".*${filmsDetail.title}.*" regex="true"/>
+
+                <!-- enter required fields -->
+
+                <clickbutton label="${button.save}" description="Click button 'Save'"/>
+                <verifytitle description="Films List appears if save successful"
+                    text=".*${filmsList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${films.added}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Delete existing films -->
+    <target name="DeleteFilms" description="Deletes existing Films">
+        <webtest name="deleteFilms">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit Films link" url="/filmsform?id=-1"/>
+                <prepareDialogResponse description="Confirm delete" dialogType="confirm" response="true"/>
+                <clickbutton label="${button.delete}" description="Click button 'Delete'"/>
+                <verifyNoDialogResponses/>
+                <verifytitle description="display Films List" text=".*${filmsList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${films.deleted}"/>
+            </steps>
+        </webtest>
+    </target>    <!--Films-END-->
+    <!--FilmGalleries-START-->
+    <!-- runs filmGalleries-related tests -->
+    <target name="FilmGalleriesTests"
+            depends="SearchFilmGalleriess,EditFilmGalleries,SaveFilmGalleries,AddFilmGalleries,DeleteFilmGalleries"
+            description="Call and executes all filmGalleries test cases (targets)">
+        <echo>Successfully ran all FilmGalleries UI tests!</echo>
+    </target>
+
+    <!-- Verify the filmGalleriess list screen displays without errors -->
+    <target name="SearchFilmGalleriess" description="Tests search for and displaying all filmGalleriess">
+        <webtest name="searchFilmGalleriess">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click View FilmGalleries link" url="/filmGalleriess"/>
+                <verifytitle description="we should see the filmGalleriesList title"
+                    text=".*${filmGalleriesList.title}.*" regex="true"/>
+                <setinputfield description="set search term" name="q" value="*"/>
+                <clickbutton label="${button.search}" description="Click Search"/>
+                <verifytitle description="we should see the filmGalleriesList title"
+                    text=".*${filmGalleriesList.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify the edit filmGalleries screen displays without errors -->
+    <target name="EditFilmGalleries" description="Tests editing an existing FilmGalleries's information">
+        <webtest name="editFilmGalleries">
+            &config;
+            <steps>
+                &login;
+                <invoke description="View FilmGalleries List" url="/filmGalleriess"/>
+                <clicklink label="-1" description="Click edit link"/>
+                <verifytitle description="we should see the filmGalleriesDetail title"
+                    text=".*${filmGalleriesDetail.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Edit a filmGalleries and then save -->
+    <target name="SaveFilmGalleries" description="Tests editing and saving a filmGalleries">
+        <webtest name="saveFilmGalleries">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit FilmGalleries link" url="/filmGalleriesform?id=-1"/>
+                <verifytitle description="we should see the filmGalleriesDetail title"
+                    text=".*${filmGalleriesDetail.title}.*" regex="true"/>
+
+                <!-- update some of the required fields -->
+                <setInputField description="set created" name="created" value="03/03/2016"/>
+                <setInputField description="set imageName" name="imageName" value="BbJtFcQqAlBfEzGbEbEkWkLyLwEiXhOgVoQaYgBxMjQuKaBbDfIrSdBeGfBrRiNhMsXdOvLxEiJmHxAyBaTgRyMuUtRrKaYdWgVtVfCyMfLqEjYiMgRiGnHuQlBwOdVpPsEnSwPqTpLyLeBvAzTlKtYyFiDsZuOfAkCuOtPqTvUzOvFnJnJaDhZdRuLnVwHsPlGaWwDfSdUwFzUqWoBgDgZnVtBcWaUfKzTaBeXgLxTlSmMtDpGaUdIiOyCzCpL"/>
+                <setInputField description="set modified" name="modified" value="03/03/2016"/>
+
+                <clickbutton label="${button.save}" description="Click Save"/>
+                <verifytitle description="Page re-appears if save successful"
+                    text=".*${filmGalleriesDetail.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${filmGalleries.updated}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Add a new FilmGalleries -->
+    <target name="AddFilmGalleries" description="Adds a new FilmGalleries">
+        <webtest name="addFilmGalleries">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Add Button" url="/filmGalleriesform"/>
+                <verifytitle description="we should see the filmGalleriesDetail title"
+                    text=".*${filmGalleriesDetail.title}.*" regex="true"/>
+
+                <!-- enter required fields -->
+                <setInputField description="set created" name="created" value="03/03/2016"/>
+                <setInputField description="set imageName" name="imageName" value="DcVqZqNvNqJjGqKmCbSgKnAvKcAaUmUrTxFeWlCaCpJkLwOaXcKkBbCqUzFoXbKkUzXfIkAyEcQoCqCaKlSoFmIuObStHdKbKyNpKhDrYoBsOzJzScWyPvMkVqGcSxChIuXhWzDoWkHeOnDgFpSyXsFnGdRgZiHpGwGgRmTeDqRpUeYiBeWjFmQgOtBrTzYvLhUuOaRjNxHoNpUtAlSbYfAuLmXtHnTwWmLiBmZqBnKbTjYvLwYjUlScNmPaQeK"/>
+                <setInputField description="set modified" name="modified" value="03/03/2016"/>
+
+                <clickbutton label="${button.save}" description="Click button 'Save'"/>
+                <verifytitle description="FilmGalleries List appears if save successful"
+                    text=".*${filmGalleriesList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${filmGalleries.added}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Delete existing filmGalleries -->
+    <target name="DeleteFilmGalleries" description="Deletes existing FilmGalleries">
+        <webtest name="deleteFilmGalleries">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit FilmGalleries link" url="/filmGalleriesform?id=-1"/>
+                <prepareDialogResponse description="Confirm delete" dialogType="confirm" response="true"/>
+                <clickbutton label="${button.delete}" description="Click button 'Delete'"/>
+                <verifyNoDialogResponses/>
+                <verifytitle description="display FilmGalleries List" text=".*${filmGalleriesList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${filmGalleries.deleted}"/>
+            </steps>
+        </webtest>
+    </target>    <!--FilmGalleries-END-->
+    <!--Cinemas-START-->
+    <!-- runs cinemas-related tests -->
+    <target name="CinemasTests"
+            depends="SearchCinemass,EditCinemas,SaveCinemas,AddCinemas,DeleteCinemas"
+            description="Call and executes all cinemas test cases (targets)">
+        <echo>Successfully ran all Cinemas UI tests!</echo>
+    </target>
+
+    <!-- Verify the cinemass list screen displays without errors -->
+    <target name="SearchCinemass" description="Tests search for and displaying all cinemass">
+        <webtest name="searchCinemass">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click View Cinemas link" url="/cinemass"/>
+                <verifytitle description="we should see the cinemasList title"
+                    text=".*${cinemasList.title}.*" regex="true"/>
+                <setinputfield description="set search term" name="q" value="*"/>
+                <clickbutton label="${button.search}" description="Click Search"/>
+                <verifytitle description="we should see the cinemasList title"
+                    text=".*${cinemasList.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify the edit cinemas screen displays without errors -->
+    <target name="EditCinemas" description="Tests editing an existing Cinemas's information">
+        <webtest name="editCinemas">
+            &config;
+            <steps>
+                &login;
+                <invoke description="View Cinemas List" url="/cinemass"/>
+                <clicklink label="-1" description="Click edit link"/>
+                <verifytitle description="we should see the cinemasDetail title"
+                    text=".*${cinemasDetail.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Edit a cinemas and then save -->
+    <target name="SaveCinemas" description="Tests editing and saving a cinemas">
+        <webtest name="saveCinemas">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit Cinemas link" url="/cinemasform?id=-1"/>
+                <verifytitle description="we should see the cinemasDetail title"
+                    text=".*${cinemasDetail.title}.*" regex="true"/>
+
+                <!-- update some of the required fields -->
+                <setCheckbox description="set displayInHome" name="displayInHome" value="true"/>
+
+                <clickbutton label="${button.save}" description="Click Save"/>
+                <verifytitle description="Page re-appears if save successful"
+                    text=".*${cinemasDetail.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${cinemas.updated}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Add a new Cinemas -->
+    <target name="AddCinemas" description="Adds a new Cinemas">
+        <webtest name="addCinemas">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Add Button" url="/cinemasform"/>
+                <verifytitle description="we should see the cinemasDetail title"
+                    text=".*${cinemasDetail.title}.*" regex="true"/>
+
+                <!-- enter required fields -->
+                <setCheckbox description="set displayInHome" name="displayInHome" value="true"/>
+
+                <clickbutton label="${button.save}" description="Click button 'Save'"/>
+                <verifytitle description="Cinemas List appears if save successful"
+                    text=".*${cinemasList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${cinemas.added}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Delete existing cinemas -->
+    <target name="DeleteCinemas" description="Deletes existing Cinemas">
+        <webtest name="deleteCinemas">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit Cinemas link" url="/cinemasform?id=-1"/>
+                <prepareDialogResponse description="Confirm delete" dialogType="confirm" response="true"/>
+                <clickbutton label="${button.delete}" description="Click button 'Delete'"/>
+                <verifyNoDialogResponses/>
+                <verifytitle description="display Cinemas List" text=".*${cinemasList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${cinemas.deleted}"/>
+            </steps>
+        </webtest>
+    </target>    <!--Cinemas-END-->
+    
+    <!--CinemaShows-START-->
+    <!-- runs cinemaShows-related tests -->
+    <target name="CinemaShowsTests"
+            depends="SearchCinemaShowss,EditCinemaShows,SaveCinemaShows,AddCinemaShows,DeleteCinemaShows"
+            description="Call and executes all cinemaShows test cases (targets)">
+        <echo>Successfully ran all CinemaShows UI tests!</echo>
+    </target>
+
+    <!-- Verify the cinemaShowss list screen displays without errors -->
+    <target name="SearchCinemaShowss" description="Tests search for and displaying all cinemaShowss">
+        <webtest name="searchCinemaShowss">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click View CinemaShows link" url="/cinemaShowss"/>
+                <verifytitle description="we should see the cinemaShowsList title"
+                    text=".*${cinemaShowsList.title}.*" regex="true"/>
+                <setinputfield description="set search term" name="q" value="*"/>
+                <clickbutton label="${button.search}" description="Click Search"/>
+                <verifytitle description="we should see the cinemaShowsList title"
+                    text=".*${cinemaShowsList.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Verify the edit cinemaShows screen displays without errors -->
+    <target name="EditCinemaShows" description="Tests editing an existing CinemaShows's information">
+        <webtest name="editCinemaShows">
+            &config;
+            <steps>
+                &login;
+                <invoke description="View CinemaShows List" url="/cinemaShowss"/>
+                <clicklink label="-1" description="Click edit link"/>
+                <verifytitle description="we should see the cinemaShowsDetail title"
+                    text=".*${cinemaShowsDetail.title}.*" regex="true"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Edit a cinemaShows and then save -->
+    <target name="SaveCinemaShows" description="Tests editing and saving a cinemaShows">
+        <webtest name="saveCinemaShows">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit CinemaShows link" url="/cinemaShowsform?id=-1"/>
+                <verifytitle description="we should see the cinemaShowsDetail title"
+                    text=".*${cinemaShowsDetail.title}.*" regex="true"/>
+
+                <!-- update some of the required fields -->
+                <setInputField description="set showTime" name="showTime" value="03/03/2016"/>
+
+                <clickbutton label="${button.save}" description="Click Save"/>
+                <verifytitle description="Page re-appears if save successful"
+                    text=".*${cinemaShowsDetail.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${cinemaShows.updated}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Add a new CinemaShows -->
+    <target name="AddCinemaShows" description="Adds a new CinemaShows">
+        <webtest name="addCinemaShows">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Add Button" url="/cinemaShowsform"/>
+                <verifytitle description="we should see the cinemaShowsDetail title"
+                    text=".*${cinemaShowsDetail.title}.*" regex="true"/>
+
+                <!-- enter required fields -->
+                <setInputField description="set showTime" name="showTime" value="03/03/2016"/>
+
+                <clickbutton label="${button.save}" description="Click button 'Save'"/>
+                <verifytitle description="CinemaShows List appears if save successful"
+                    text=".*${cinemaShowsList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${cinemaShows.added}"/>
+            </steps>
+        </webtest>
+    </target>
+
+    <!-- Delete existing cinemaShows -->
+    <target name="DeleteCinemaShows" description="Deletes existing CinemaShows">
+        <webtest name="deleteCinemaShows">
+            &config;
+            <steps>
+                &login;
+                <invoke description="click Edit CinemaShows link" url="/cinemaShowsform?id=-1"/>
+                <prepareDialogResponse description="Confirm delete" dialogType="confirm" response="true"/>
+                <clickbutton label="${button.delete}" description="Click button 'Delete'"/>
+                <verifyNoDialogResponses/>
+                <verifytitle description="display CinemaShows List" text=".*${cinemaShowsList.title}.*" regex="true"/>
+                <verifytext description="verify success message" text="${cinemaShows.deleted}"/>
+            </steps>
+        </webtest>
+    </target>    <!--CinemaShows-END-->
+</project>
+
+
+
+
+
+

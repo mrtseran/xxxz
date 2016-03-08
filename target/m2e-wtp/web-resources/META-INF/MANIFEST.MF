@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Implementation-Title: Spring MVC Application
+Implementation-Version: 1.0-SNAPSHOT
+Built-By: 123
+Implementation-Vendor-Id: com.techorin.cinema
+Build-Jdk: 1.8.0_74
+Created-By: Maven Integration for Eclipse
+

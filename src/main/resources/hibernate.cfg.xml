@@ -1,0 +1,19 @@
+<!-- NOTE: If you're working offline, you might have to change the DOCTYPE to the following:
+<!DOCTYPE hibernate-configuration PUBLIC "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">-->
+<!DOCTYPE hibernate-configuration PUBLIC "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <mapping class="com.techorin.cinema.model.User"/>
+        <mapping class="com.techorin.cinema.model.Role"/>
+        <mapping class="com.techorin.cinema.model.Cinemas"/>
+        <mapping class="com.techorin.cinema.model.CinemaShows"/>
+        <mapping class="com.techorin.cinema.model.FilmCategories"/>
+        <mapping class="com.techorin.cinema.model.FilmGalleries"/>
+        <mapping class="com.techorin.cinema.model.Films"/>
+        
+        
+    </session-factory>
+</hibernate-configuration>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MenuConfig>
+    <Displayers>
+        <Displayer name="Velocity" type="net.sf.navigator.displayer.VelocityMenuDisplayer"/>
+    </Displayers>
+    <Menus>
+        <Menu name="Home" title="home.title" page="/home" roles="ROLE_ADMIN,ROLE_USER"/>
+        <Menu name="UserMenu" title="menu.user" description="User Menu" page="/userform" roles="ROLE_ADMIN,ROLE_USER"/>
+        <Menu name="AdminMenu" title="menu.admin" description="Admin Menu" roles="ROLE_ADMIN" page="/admin/users">
+            <Item name="ViewUsers" title="menu.admin.users" page="/admin/users"/>
+            <Item name="ActiveUsers" title="home.activeUsers" page="/admin/activeUsers"/>
+            <Item name="ReloadContext" title="menu.admin.reload" page="/admin/reload"/>
+            <Item name="FileUpload" title="menu.selectFile" page="/fileupload"/>
+        </Menu>
+        <Menu name="Logout" title="user.logout" page="/logout" roles="ROLE_ADMIN,ROLE_USER"/>
+        <!--FilmCategories-START-->
+        <Menu name="FilmCategoriesMenu" title="filmCategoriesList.title" page="/filmCategoriess"/>
+        <!--FilmCategories-END-->
+        <!--Films-START-->
+        <Menu name="FilmsMenu" title="filmsList.title" page="/filmss"/>
+        <!--Films-END-->
+        <!--FilmGalleries-START-->
+        <Menu name="FilmGalleriesMenu" title="filmGalleriesList.title" page="/filmGalleriess"/>
+        <!--FilmGalleries-END-->
+        <!--Cinemas-START-->
+        <Menu name="CinemasMenu" title="cinemasList.title" page="/cinemass"/>
+        <!--Cinemas-END-->
+        
+        <!--CinemaShows-START-->
+        <Menu name="CinemaShowsMenu" title="cinemaShowsList.title" page="/cinemaShowss"/>
+        <!--CinemaShows-END-->
+    </Menus>
+
+
+
+
+
+
+</MenuConfig>
